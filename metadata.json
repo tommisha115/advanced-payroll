@@ -1,0 +1,5 @@
+{
+  "name": "Payroll Calculator",
+  "description": "A React app to manage employees and calculate payroll with automated tax calculations.",
+  "requestFramePermissions": []
+}

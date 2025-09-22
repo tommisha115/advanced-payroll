@@ -1,0 +1,731 @@
+:root {
+  --primary-color: #4a90e2;
+  --primary-hover-color: #357ABD;
+  --secondary-color: #f5f7fa;
+  --text-color: #333;
+  --border-color: #dfe3e8;
+  --card-background: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --danger-color-light: #fee2e2;
+  --danger-color-dark: #b91c1c;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 2rem;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin: 0 0 0.5rem 0;
+}
+
+header p {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 992px) {
+  .management-grid {
+    grid-template-columns: minmax(420px, 1fr) 1.5fr;
+    align-items: start;
+  }
+}
+
+.card {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.card.is-editing {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color), 0 4px 12px var(--shadow-color);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  margin-top: 0; /* Override default h2 margin */
+}
+
+.card-header h2 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.results-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.form-group.span-2, .form-group-checkbox.span-2 {
+    grid-column: span 2;
+}
+
+.form-group.span-4, .form-group-checkbox.span-4 {
+    grid-column: span 4;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+input[type='text'],
+input[type='number'],
+select {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  background-color: #fdfdfd;
+  color: #000;
+}
+
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.search-bar-container {
+  position: relative;
+  flex-grow: 1;
+}
+
+.company-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.company-filter-container label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.company-filter-container select {
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background-position: right 0.25rem center;
+}
+
+.search-bar-container svg {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 2.5rem !important;
+}
+
+input[type='number'] {
+  text-align: center;
+}
+
+select {
+ appearance: none;
+ background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+ background-position: right 0.5rem center;
+ background-repeat: no-repeat;
+ background-size: 1.5em 1.5em;
+ padding-right: 2.5rem;
+}
+
+
+input[type='text']:focus,
+input[type='number']:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+  background-color: #fff;
+}
+
+.form-group-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: var(--secondary-color);
+}
+
+.form-group-checkbox label {
+  margin-bottom: 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-group-checkbox input[type='checkbox'] {
+  width: 1.25em;
+  height: 1.25em;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  background-color: var(--primary-color);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--primary-hover-color);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+button:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #e9ecf0;
+    border-color: #c8cdd3;
+}
+
+/* Employee Roster */
+.employee-roster {
+}
+
+.no-results-message {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: #666;
+  font-style: italic;
+}
+
+.roster-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.roster-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.roster-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.roster-item-name-role {
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.employee-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.employee-role {
+  font-size: 0.9rem;
+  color: #555;
+  background-color: var(--secondary-color);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.employee-company {
+  font-size: 0.9rem;
+  color: #3b82f6;
+  background-color: #dbeafe;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.roster-item-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.roster-item-details strong {
+    color: var(--text-color);
+}
+
+.roster-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-icon {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.remove-btn {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color-dark);
+    border-color: transparent;
+}
+.remove-btn:hover {
+    background-color: #fecaca;
+}
+
+.calculate-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.calculate-btn {
+  width: auto;
+  min-width: 200px;
+}
+
+.results-card {
+  grid-column: 1 / -1; /* Make results card span full width */
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+th {
+  background-color: var(--secondary-color);
+  font-weight: 600;
+}
+
+.tax-header {
+  color: var(--error-color);
+}
+
+tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.deduction-cell,
+.tax-cell {
+  color: var(--error-color);
+}
+
+.total-gross-cell {
+    font-weight: 600;
+}
+
+.net-pay-cell {
+  font-weight: bold;
+  color: var(--success-color);
+}
+
+.error-message {
+  background-color: #fff1f2;
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Payslip Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#payslip-to-print {
+  padding: 2.5rem;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.payslip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.company-name {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+.company-address {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.payslip-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 0.25rem;
+}
+
+.payslip-employee-info {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  background-color: var(--secondary-color);
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.payslip-employee-info strong {
+    margin-left: 0.5ch;
+}
+
+
+.payslip-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .payslip-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.payslip-section h3 {
+  font-size: 1.25rem;
+  margin: 0 0 1rem 0;
+  font-weight: bold;
+}
+
+.payslip-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+.payslip-table td {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+}
+.payslip-table tr:last-child td {
+  border-bottom: none;
+}
+.payslip-table .amount {
+  text-align: right;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+.payslip-table tfoot {
+  border-top: 2px solid var(--text-color);
+  font-weight: bold;
+}
+.payslip-table tfoot td {
+    padding-top: 0.6rem;
+}
+
+.payslip-net-pay {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.net-pay-label {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.net-pay-amount {
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--secondary-color);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.modal-footer button {
+    width: auto;
+}
+
+/* --- PRINT STYLES --- */
+.printable-report {
+  display: none; /* Hide by default on screen */
+}
+
+@media print {
+  /* --- GENERAL SETUP --- */
+  body {
+    padding: 0;
+    margin: 0;
+    background-color: #fff;
+    font-size: 12pt;
+  }
+  @page {
+    size: A4 landscape;
+    margin: 1.5cm;
+  }
+
+  /* By default, hide screen-only content and show the printable report */
+  .screen-only {
+    display: none !important;
+  }
+  .printable-report {
+    display: block !important;
+  }
+
+  /* --- PAYSLIP-SPECIFIC OVERRIDES (when modal is open) --- */
+
+  /* If a modal is open, hide the main report AND the screen content */
+  body:has(.modal-overlay) .printable-report,
+  body:has(.modal-overlay) .screen-only {
+    display: none !important;
+  }
+
+  /* Then, style the modal to be the only thing visible and printable */
+  body:has(.modal-overlay) .modal-overlay {
+    position: static;
+    display: block;
+    background: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+  body:has(.modal-overlay) .modal-content {
+    box-shadow: none;
+    border-radius: 0;
+    max-height: none;
+    padding: 0;
+    border: none;
+    width: 100%;
+  }
+  body:has(.modal-overlay) #payslip-to-print {
+    overflow: visible;
+    font-size: 11pt;
+  }
+  body:has(.modal-overlay) .modal-footer {
+    display: none !important;
+  }
+
+  /* --- COLOR & STYLE ADJUSTMENTS FOR PRINTING --- */
+
+  /* Ensure colors print for payslip */
+  .payslip-net-pay,
+  .payslip-employee-info,
+  .print-table th,
+  .print-table tbody tr:nth-child(even) {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .payslip-net-pay {
+    background-color: var(--primary-color) !important;
+  }
+  .payslip-employee-info {
+    background-color: var(--secondary-color) !important;
+  }
+
+  /* --- REPORT PRINTING STYLES --- */
+  .print-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    text-align: center;
+  }
+  .print-header h1 {
+    font-size: 24pt;
+    margin: 0;
+  }
+  .print-header-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11pt;
+    margin-top: 0.5rem;
+  }
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+  .print-table th,
+  .print-table td {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    text-align: left;
+  }
+  .print-table th {
+    background-color: #f2f2f2 !important;
+    font-weight: bold;
+  }
+  .print-table td:nth-child(n + 2) {
+    /* Align currency right */
+    text-align: right;
+  }
+  .print-table td:first-child {
+    text-align: left;
+  }
+  .print-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+  }
+  .print-table tfoot {
+    border-top: 2px solid #333;
+    font-weight: bold;
+  }
+  .print-table .signature-cell {
+    min-width: 120px;
+    border-bottom: 1px solid #333;
+  }
+  .print-table tfoot .signature-cell {
+    border-bottom: none;
+  }
+}
