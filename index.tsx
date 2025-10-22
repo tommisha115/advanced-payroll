@@ -450,15 +450,20 @@ const SettingsModal = ({
       setProfileError('Business name cannot be empty.');
       return;
     }
+    const finalCompanies = updatedCompanies.map((c) => c.trim()).filter(Boolean);
+    if (finalCompanies.length === 0) {
+      setProfileError('You must have at least one company name.');
+      return;
+    }
     if (updatedCompanies.some((c) => !c.trim())) {
       setProfileError('All company names must be filled out.');
       return;
     }
-
+    
     setProfileLoading(true);
     const newData = {
       businessName: updatedBusinessName.trim(),
-      companies: updatedCompanies.map((c) => c.trim()),
+      companies: finalCompanies,
     };
 
     const { error } = await supabase.auth.updateUser({ data: newData });
@@ -477,6 +482,18 @@ const SettingsModal = ({
     const newCompanies = [...updatedCompanies];
     newCompanies[index] = value;
     setUpdatedCompanies(newCompanies);
+  };
+
+  const handleAddCompany = () => {
+    setUpdatedCompanies([...updatedCompanies, '']);
+  };
+
+  const handleRemoveCompany = (indexToRemove: number) => {
+    if (updatedCompanies.length > 1) {
+      setUpdatedCompanies(
+        updatedCompanies.filter((_, index) => index !== indexToRemove)
+      );
+    }
   };
 
   return (
@@ -546,16 +563,41 @@ const SettingsModal = ({
                   <label htmlFor={`settingsCompanyName${index}`}>
                     Company #{index + 1} Name
                   </label>
-                  <input
-                    id={`settingsCompanyName${index}`}
-                    type="text"
-                    value={company}
-                    onChange={(e) => handleCompanyChange(index, e.target.value)}
-                    required
-                  />
+                  <div className="input-with-button">
+                    <input
+                      id={`settingsCompanyName${index}`}
+                      type="text"
+                      value={company}
+                      onChange={(e) =>
+                        handleCompanyChange(index, e.target.value)
+                      }
+                      required
+                    />
+                    {updatedCompanies.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCompany(index)}
+                        className="btn-icon-only remove-btn"
+                        aria-label={`Remove Company #${index + 1}`}
+                      >
+                        <RemoveIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
-              <button type="submit" disabled={profileLoading}>
+              <button
+                type="button"
+                onClick={handleAddCompany}
+                className="btn-secondary btn-add-company"
+              >
+                Add Another Company
+              </button>
+              <button
+                type="submit"
+                disabled={profileLoading}
+                style={{ marginTop: '1rem' }}
+              >
                 {profileLoading ? 'Saving...' : 'Save Changes'}
               </button>
               {profileError && (
