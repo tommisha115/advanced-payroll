@@ -906,9 +906,7 @@ function App() {
 
   // Report Date State
   const [reportMonth, setReportMonth] = useState(ETHIOPIAN_MONTHS[0]);
-  const [reportYear, setReportYear] = useState(
-    new Date().getFullYear().toString()
-  );
+  const [reportYear, setReportYear] = useState('2018');
   const [reportDateString, setReportDateString] = useState('');
 
   // Fail-fast check for Supabase configuration
