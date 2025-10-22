@@ -46,19 +46,18 @@ const ROLES = [
 ];
 
 const ETHIOPIAN_MONTHS = [
-  'Meskerem',
-  'Tikimt',
-  'Hidar',
-  'Tahsas',
-  'Tir',
-  'Yekatit',
-  'Megabit',
-  'Miyazya',
-  'Ginbot',
-  'Sene',
-  'Hamle',
-  'Nehase',
-  'Pagume',
+  'መስከረም',
+  'ጥቅምት',
+  'ህዳር',
+  'ታህሳስ',
+  'ጥር',
+  'የካቲት',
+  'መጋቢት',
+  'ሚያዚያ',
+  'ግንቦት',
+  'ሰኔ',
+  'ሐምሌ',
+  'ነሐሴ',
 ];
 
 interface Employee {
@@ -407,7 +406,9 @@ const SettingsModal = ({
   // Profile State
   const [updatedBusinessName, setUpdatedBusinessName] =
     useState(currentBusinessName);
-  const [updatedCompanies, setUpdatedCompanies] = useState([...currentCompanies]);
+  const [updatedCompanies, setUpdatedCompanies] = useState(
+    currentCompanies.length > 0 ? [...currentCompanies] : ['']
+  );
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
