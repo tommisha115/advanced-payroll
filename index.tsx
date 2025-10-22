@@ -671,14 +671,25 @@ function App() {
   );
   const [reportDateString, setReportDateString] = useState('');
 
+  // Fail-fast check for Supabase configuration
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="auth-container">
+        <div className="card auth-card">
+          <div className="error-message">
+            <strong>Configuration Error</strong>
+            <p style={{ margin: '0.5rem 0 0 0', textAlign: 'left' }}>
+              The application is not connected to a backend database. Please
+              ensure the Supabase URL and Key are correctly configured in your
+              environment variables.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setError(
-        'Supabase is not configured. Please add your project URL and anon key in index.tsx.'
-      );
-      setAppLoading(false);
-      return;
-    }
     setAppLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
