@@ -663,6 +663,21 @@ button:disabled {
   margin-bottom: 1.5rem;
 }
 
+.input-with-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-with-button input {
+  flex-grow: 1;
+}
+
+.btn-add-company {
+  margin-top: 0.5rem;
+}
+
+
 .confirm-modal-content {
   max-width: 450px;
   padding: 2rem;
