@@ -11,23 +11,21 @@ import {
   Session,
 } from '@supabase/supabase-js';
 
-// Fix for Vite environment variables not being recognized by TypeScript
-declare global {
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
-  }
-
-  interface ImportMetaEnv {
-    readonly VITE_SUPABASE_URL: string;
-    readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
-  }
-}
-
 // --- Supabase Client Setup ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// IMPORTANT: PASTE YOUR SUPABASE CREDENTIALS HERE
+// Find these in your Supabase project settings under "API".
+//
+// WARNING: DO NOT COMMIT THIS FILE WITH YOUR REAL KEYS TO A PUBLIC GITHUB REPOSITORY.
+// These keys are sensitive and should be kept private.
+const supabaseUrl = "PASTE_YOUR_SUPABASE_URL_HERE";
+const supabasePublishableKey = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
 
-const isSupabaseConfigured = supabaseUrl && supabasePublishableKey;
+
+const isSupabaseConfigured =
+  supabaseUrl &&
+  supabasePublishableKey &&
+  supabaseUrl !== 'PASTE_YOUR_SUPABASE_URL_HERE' &&
+  supabasePublishableKey !== 'PASTE_YOUR_PUBLISHABLE_KEY_HERE';
 
 let supabase: SupabaseClient | null = null;
 if (isSupabaseConfigured) {
@@ -878,7 +876,7 @@ function App() {
             <p style={{ margin: '0.5rem 0 0 0', textAlign: 'left' }}>
               The application is not connected to a backend database. Please
               ensure the Supabase URL and Publishable Key are correctly
-              configured in your environment variables.
+              configured directly in the <code>index.tsx</code> file.
             </p>
           </div>
         </div>
