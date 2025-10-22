@@ -35,8 +35,7 @@ if (isSupabaseConfigured) {
 }
 
 // --- Constants, Helper Functions, and Type Definitions ---
-
-const ROLES = [
+const DEFAULT_ROLES = [
   'Director',
   'Assistant Director',
   'Teacher',
@@ -385,9 +384,11 @@ interface SettingsModalProps {
   onProfileUpdate: (newData: {
     businessName: string;
     companies: string[];
+    roles: string[];
   }) => void;
   currentBusinessName: string;
   currentCompanies: string[];
+  currentRoles: string[];
 }
 
 const SettingsModal = ({
@@ -395,6 +396,7 @@ const SettingsModal = ({
   onProfileUpdate,
   currentBusinessName,
   currentCompanies,
+  currentRoles,
 }: SettingsModalProps) => {
   // Password State
   const [newPassword, setNewPassword] = useState('');
@@ -408,6 +410,9 @@ const SettingsModal = ({
     useState(currentBusinessName);
   const [updatedCompanies, setUpdatedCompanies] = useState(
     currentCompanies.length > 0 ? [...currentCompanies] : ['']
+  );
+  const [updatedRoles, setUpdatedRoles] = useState(
+    currentRoles.length > 0 ? [...currentRoles] : ['']
   );
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
@@ -446,11 +451,15 @@ const SettingsModal = ({
     setProfileError('');
     setProfileSuccess('');
 
+    // --- Validation ---
     if (!updatedBusinessName.trim()) {
       setProfileError('Business name cannot be empty.');
       return;
     }
-    const finalCompanies = updatedCompanies.map((c) => c.trim()).filter(Boolean);
+
+    const finalCompanies = updatedCompanies
+      .map((c) => c.trim())
+      .filter(Boolean);
     if (finalCompanies.length === 0) {
       setProfileError('You must have at least one company name.');
       return;
@@ -459,11 +468,23 @@ const SettingsModal = ({
       setProfileError('All company names must be filled out.');
       return;
     }
-    
+
+    const finalRoles = updatedRoles.map((r) => r.trim()).filter(Boolean);
+    if (finalRoles.length === 0) {
+      setProfileError('You must have at least one role.');
+      return;
+    }
+    if (updatedRoles.some((r) => !r.trim())) {
+      setProfileError('All role names must be filled out.');
+      return;
+    }
+    // --- End Validation ---
+
     setProfileLoading(true);
     const newData = {
       businessName: updatedBusinessName.trim(),
       companies: finalCompanies,
+      roles: finalRoles,
     };
 
     const { error } = await supabase.auth.updateUser({ data: newData });
@@ -493,6 +514,22 @@ const SettingsModal = ({
       setUpdatedCompanies(
         updatedCompanies.filter((_, index) => index !== indexToRemove)
       );
+    }
+  };
+
+  const handleRoleChange = (index: number, value: string) => {
+    const newRoles = [...updatedRoles];
+    newRoles[index] = value;
+    setUpdatedRoles(newRoles);
+  };
+
+  const handleAddRole = () => {
+    setUpdatedRoles([...updatedRoles, '']);
+  };
+
+  const handleRemoveRole = (indexToRemove: number) => {
+    if (updatedRoles.length > 1) {
+      setUpdatedRoles(updatedRoles.filter((_, index) => index !== indexToRemove));
     }
   };
 
@@ -544,10 +581,11 @@ const SettingsModal = ({
             </form>
           </div>
 
-          {/* Edit Business Info Section */}
+          {/* Edit Profile Section */}
           <div className="settings-section">
-            <h3>Edit Business Info</h3>
+            <h3>Edit Profile</h3>
             <form onSubmit={handleProfileUpdate}>
+              {/* Business Name */}
               <div className="form-group">
                 <label htmlFor="settingsBusinessName">Business Name</label>
                 <input
@@ -558,10 +596,13 @@ const SettingsModal = ({
                   required
                 />
               </div>
+
+              {/* Companies */}
+              <h4>Companies</h4>
               {updatedCompanies.map((company, index) => (
-                <div className="form-group" key={index}>
+                <div className="form-group" key={`company-${index}`}>
                   <label htmlFor={`settingsCompanyName${index}`}>
-                    Company #{index + 1} Name
+                    Company #{index + 1}
                   </label>
                   <div className="input-with-button">
                     <input
@@ -589,16 +630,53 @@ const SettingsModal = ({
               <button
                 type="button"
                 onClick={handleAddCompany}
-                className="btn-secondary btn-add-company"
+                className="btn-secondary btn-add-item"
               >
                 Add Another Company
               </button>
+
+              {/* Roles */}
+              <h4 style={{ marginTop: '2rem' }}>Roles</h4>
+              {updatedRoles.map((role, index) => (
+                <div className="form-group" key={`role-${index}`}>
+                  <label htmlFor={`settingsRoleName${index}`}>
+                    Role #{index + 1}
+                  </label>
+                  <div className="input-with-button">
+                    <input
+                      id={`settingsRoleName${index}`}
+                      type="text"
+                      value={role}
+                      onChange={(e) => handleRoleChange(index, e.target.value)}
+                      required
+                    />
+                    {updatedRoles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRole(index)}
+                        className="btn-icon-only remove-btn"
+                        aria-label={`Remove Role #${index + 1}`}
+                      >
+                        <RemoveIcon />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={handleAddRole}
+                className="btn-secondary btn-add-item"
+              >
+                Add Another Role
+              </button>
+
               <button
                 type="submit"
                 disabled={profileLoading}
-                style={{ marginTop: '1rem' }}
+                style={{ marginTop: '2rem' }}
               >
-                {profileLoading ? 'Saving...' : 'Save Changes'}
+                {profileLoading ? 'Saving...' : 'Save Profile Changes'}
               </button>
               {profileError && (
                 <div className="error-message">{profileError}</div>
@@ -870,15 +948,18 @@ function App() {
   const [businessName, setBusinessName] = useState('');
   const [numCompanies, setNumCompanies] = useState(1);
   const [companyNames, setCompanyNames] = useState(['']);
+  const [numRoles, setNumRoles] = useState(1);
+  const [roleNames, setRoleNames] = useState(['']);
 
   // App state
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [userBusinessName, setUserBusinessName] = useState('');
   const [userCompanies, setUserCompanies] = useState<string[]>([]);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
 
   // Form state
   const [employeeName, setEmployeeName] = useState('');
-  const [employeeRole, setEmployeeRole] = useState(ROLES[0]);
+  const [employeeRole, setEmployeeRole] = useState('');
   const [employeeCompany, setEmployeeCompany] = useState('');
   const [employeeGrossSalary, setEmployeeGrossSalary] = useState('');
   const [employeeTransport, setEmployeeTransport] = useState('');
@@ -934,10 +1015,15 @@ function App() {
       if (session) {
         const metadata = session.user?.user_metadata;
         const companies = metadata?.companies || [];
+        const roles = metadata?.roles || DEFAULT_ROLES;
         setUserCompanies(companies);
+        setUserRoles(roles);
         setUserBusinessName(metadata?.businessName || '');
         if (companies.length > 0) {
           setEmployeeCompany(companies[0]);
+        }
+        if (roles.length > 0) {
+          setEmployeeRole(roles[0]);
         }
       }
       setAppLoading(false);
@@ -950,14 +1036,20 @@ function App() {
       if (session) {
         const metadata = session.user?.user_metadata;
         const companies = metadata?.companies || [];
+        const roles = metadata?.roles || DEFAULT_ROLES;
         setUserCompanies(companies);
+        setUserRoles(roles);
         setUserBusinessName(metadata?.businessName || '');
         if (companies.length > 0 && !employeeCompany) {
           setEmployeeCompany(companies[0]);
         }
+        if (roles.length > 0 && !employeeRole) {
+          setEmployeeRole(roles[0]);
+        }
       } else {
         // Reset on logout
         setUserCompanies([]);
+        setUserRoles([]);
         setUserBusinessName('');
       }
     });
@@ -1002,7 +1094,7 @@ function App() {
 
   const resetForm = () => {
     setEmployeeName('');
-    setEmployeeRole(ROLES[0]);
+    setEmployeeRole(userRoles[0] || '');
     setEmployeeCompany(userCompanies[0] || '');
     setEmployeeGrossSalary('');
     setEmployeeTransport('');
@@ -1498,6 +1590,24 @@ function App() {
     setCompanyNames(newCompanyNames);
   };
 
+  const handleNumRolesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const count = parseInt(e.target.value, 10);
+    setNumRoles(count);
+    setRoleNames((currentNames) => {
+      const newNames = [...currentNames].slice(0, count);
+      while (newNames.length < count) {
+        newNames.push('');
+      }
+      return newNames;
+    });
+  };
+
+  const handleRoleNameChange = (index: number, value: string) => {
+    const newRoleNames = [...roleNames];
+    newRoleNames[index] = value;
+    setRoleNames(newRoleNames);
+  };
+
   const handleAuthAction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!supabase) return;
@@ -1516,9 +1626,14 @@ function App() {
         if (!username.trim()) throw new Error('Username cannot be empty.');
         if (!businessName.trim())
           throw new Error('Business name cannot be empty.');
+
         const trimmedCompanyNames = companyNames.map((name) => name.trim());
         if (trimmedCompanyNames.some((name) => name === ''))
           throw new Error('All company names must be filled out.');
+
+        const trimmedRoleNames = roleNames.map((name) => name.trim());
+        if (trimmedRoleNames.some((name) => name === ''))
+          throw new Error('All role names must be filled out.');
 
         // This creates the user and sends the verification code.
         const { error } = await supabase.auth.signUp({
@@ -1529,6 +1644,7 @@ function App() {
               username: username.trim(),
               businessName: businessName.trim(),
               companies: trimmedCompanyNames,
+              roles: trimmedRoleNames,
             },
           },
         });
@@ -1584,6 +1700,7 @@ function App() {
     setEmployees([]);
     setPayrollResults([]);
     setUserCompanies([]);
+    setUserRoles([]);
     setUserBusinessName('');
     resetForm();
   };
@@ -1617,9 +1734,11 @@ function App() {
   const handleProfileUpdated = (newData: {
     businessName: string;
     companies: string[];
+    roles: string[];
   }) => {
     setUserBusinessName(newData.businessName);
     setUserCompanies(newData.companies);
+    setUserRoles(newData.roles);
   };
 
   const isEditing = editingEmployeeId !== null;
@@ -1729,7 +1848,7 @@ function App() {
                         </select>
                       </div>
                       {Array.from({ length: numCompanies }).map((_, index) => (
-                        <div className="form-group" key={index}>
+                        <div className="form-group" key={`company-${index}`}>
                           <label htmlFor={`companyName${index + 1}`}>
                             Company #{index + 1} Name
                           </label>
@@ -1740,6 +1859,43 @@ function App() {
                             value={companyNames[index] || ''}
                             onChange={(e) =>
                               handleCompanyNameChange(index, e.target.value)
+                            }
+                            required
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <hr />
+                    <div className="company-setup-grid">
+                      <h3>Role Setup</h3>
+                      <div className="form-group">
+                        <label htmlFor="numRoles">
+                          How many roles will you have?
+                        </label>
+                        <select
+                          id="numRoles"
+                          value={numRoles}
+                          onChange={handleNumRolesChange}
+                        >
+                          {[...Array(10).keys()].map((i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {i + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {Array.from({ length: numRoles }).map((_, index) => (
+                        <div className="form-group" key={`role-${index}`}>
+                          <label htmlFor={`roleName${index + 1}`}>
+                            Role #{index + 1} Name
+                          </label>
+                          <input
+                            id={`roleName${index + 1}`}
+                            type="text"
+                            placeholder={`e.g., Teacher`}
+                            value={roleNames[index] || ''}
+                            onChange={(e) =>
+                              handleRoleNameChange(index, e.target.value)
                             }
                             required
                           />
@@ -1845,6 +2001,7 @@ function App() {
           onProfileUpdate={handleProfileUpdated}
           currentBusinessName={userBusinessName}
           currentCompanies={userCompanies}
+          currentRoles={userRoles}
         />
       )}
 
@@ -1913,9 +2070,9 @@ function App() {
                     value={employeeRole}
                     onChange={(e) => setEmployeeRole(e.target.value)}
                     required
-                    disabled={!isSupabaseConfigured}
+                    disabled={!isSupabaseConfigured || userRoles.length === 0}
                   >
-                    {ROLES.map((role) => (
+                    {userRoles.map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>
