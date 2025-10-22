@@ -19,19 +19,19 @@ declare global {
 
   interface ImportMetaEnv {
     readonly VITE_SUPABASE_URL: string;
-    readonly VITE_SUPABASE_KEY: string;
+    readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
   }
 }
 
 // --- Supabase Client Setup ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-const isSupabaseConfigured = supabaseUrl && supabaseKey;
+const isSupabaseConfigured = supabaseUrl && supabasePublishableKey;
 
 let supabase: SupabaseClient | null = null;
 if (isSupabaseConfigured) {
-  supabase = createClient(supabaseUrl, supabaseKey);
+  supabase = createClient(supabaseUrl, supabasePublishableKey);
 }
 
 // --- Constants, Helper Functions, and Type Definitions ---
@@ -380,6 +380,202 @@ const PayslipModal = ({ result, onClose }: PayslipModalProps) => {
   );
 };
 
+// --- Settings Modal Component ---
+interface SettingsModalProps {
+  onClose: () => void;
+  onProfileUpdate: (newData: {
+    businessName: string;
+    companies: string[];
+  }) => void;
+  currentBusinessName: string;
+  currentCompanies: string[];
+}
+
+const SettingsModal = ({
+  onClose,
+  onProfileUpdate,
+  currentBusinessName,
+  currentCompanies,
+}: SettingsModalProps) => {
+  // Password State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  // Profile State
+  const [updatedBusinessName, setUpdatedBusinessName] =
+    useState(currentBusinessName);
+  const [updatedCompanies, setUpdatedCompanies] = useState([...currentCompanies]);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  const handlePasswordUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordLoading(false);
+
+    if (error) {
+      setPasswordError(`Failed to update password: ${error.message}`);
+    } else {
+      setPasswordSuccess('Password updated successfully!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(''), 3000); // Clear message after 3s
+    }
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileSuccess('');
+
+    if (!updatedBusinessName.trim()) {
+      setProfileError('Business name cannot be empty.');
+      return;
+    }
+    if (updatedCompanies.some((c) => !c.trim())) {
+      setProfileError('All company names must be filled out.');
+      return;
+    }
+
+    setProfileLoading(true);
+    const newData = {
+      businessName: updatedBusinessName.trim(),
+      companies: updatedCompanies.map((c) => c.trim()),
+    };
+
+    const { error } = await supabase.auth.updateUser({ data: newData });
+    setProfileLoading(false);
+
+    if (error) {
+      setProfileError(`Failed to update profile: ${error.message}`);
+    } else {
+      onProfileUpdate(newData);
+      setProfileSuccess('Profile updated successfully!');
+      setTimeout(() => setProfileSuccess(''), 3000);
+    }
+  };
+
+  const handleCompanyChange = (index: number, value: string) => {
+    const newCompanies = [...updatedCompanies];
+    newCompanies[index] = value;
+    setUpdatedCompanies(newCompanies);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-content settings-modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <h2>Settings</h2>
+        </div>
+        <div className="settings-grid">
+          {/* Change Password Section */}
+          <div className="settings-section">
+            <h3>Change Password</h3>
+            <form onSubmit={handlePasswordUpdate}>
+              <div className="form-group">
+                <label htmlFor="newPassword">New Password</label>
+                <input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm New Password</label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  required
+                />
+              </div>
+              <button type="submit" disabled={passwordLoading}>
+                {passwordLoading ? 'Updating...' : 'Update Password'}
+              </button>
+              {passwordError && (
+                <div className="error-message">{passwordError}</div>
+              )}
+              {passwordSuccess && (
+                <div className="success-message">{passwordSuccess}</div>
+              )}
+            </form>
+          </div>
+
+          {/* Edit Business Info Section */}
+          <div className="settings-section">
+            <h3>Edit Business Info</h3>
+            <form onSubmit={handleProfileUpdate}>
+              <div className="form-group">
+                <label htmlFor="settingsBusinessName">Business Name</label>
+                <input
+                  id="settingsBusinessName"
+                  type="text"
+                  value={updatedBusinessName}
+                  onChange={(e) => setUpdatedBusinessName(e.target.value)}
+                  required
+                />
+              </div>
+              {updatedCompanies.map((company, index) => (
+                <div className="form-group" key={index}>
+                  <label htmlFor={`settingsCompanyName${index}`}>
+                    Company #{index + 1} Name
+                  </label>
+                  <input
+                    id={`settingsCompanyName${index}`}
+                    type="text"
+                    value={company}
+                    onChange={(e) => handleCompanyChange(index, e.target.value)}
+                    required
+                  />
+                </div>
+              ))}
+              <button type="submit" disabled={profileLoading}>
+                {profileLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+              {profileError && (
+                <div className="error-message">{profileError}</div>
+              )}
+              {profileSuccess && (
+                <div className="success-message">{profileSuccess}</div>
+              )}
+            </form>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn-secondary">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 // --- Delete Confirmation Modal Component ---
 
 interface DeleteConfirmationModalProps {
@@ -625,6 +821,7 @@ function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Sign-up specific state
   const [businessName, setBusinessName] = useState('');
@@ -680,8 +877,8 @@ function App() {
             <strong>Configuration Error</strong>
             <p style={{ margin: '0.5rem 0 0 0', textAlign: 'left' }}>
               The application is not connected to a backend database. Please
-              ensure the Supabase URL and Key are correctly configured in your
-              environment variables.
+              ensure the Supabase URL and Publishable Key are correctly
+              configured in your environment variables.
             </p>
           </div>
         </div>
@@ -1376,6 +1573,14 @@ function App() {
     setPayslipData(result);
   };
 
+  const handleProfileUpdated = (newData: {
+    businessName: string;
+    companies: string[];
+  }) => {
+    setUserBusinessName(newData.businessName);
+    setUserCompanies(newData.companies);
+  };
+
   const isEditing = editingEmployeeId !== null;
 
   const filteredEmployees = employees
@@ -1593,6 +1798,14 @@ function App() {
           error={deleteError}
         />
       )}
+      {showSettingsModal && (
+        <SettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          onProfileUpdate={handleProfileUpdated}
+          currentBusinessName={userBusinessName}
+          currentCompanies={userCompanies}
+        />
+      )}
 
       <div className="container">
         <header className="screen-only">
@@ -1608,6 +1821,12 @@ function App() {
               <span className="user-email">
                 {session.user?.user_metadata?.username || session.user.email}
               </span>
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="btn-secondary"
+              >
+                Settings
+              </button>
               <button onClick={handleLogout} className="btn-secondary">
                 Logout
               </button>
