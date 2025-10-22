@@ -1,2358 +1,1026 @@
-/**
+/*
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom/client';
-import * as XLSX from 'xlsx';
-import {
-  createClient,
-  SupabaseClient,
-  Session,
-} from '@supabase/supabase-js';
+:root {
+  --primary-color: #4a90e2;
+  --primary-hover-color: #357ABD;
+  --secondary-color: #f5f7fa;
+  --text-color: #333;
+  --border-color: #dfe3e8;
+  --card-background: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  --success-color: #10b981;
+  --success-light-color: #d1fae5;
+  --error-color: #ef4444;
+  --danger-color: #dc2626;
+  --danger-hover-color: #b91c1c;
+  --danger-color-light: #fee2e2;
+  --danger-color-dark: #b91c1c;
+}
 
-// Fix for Vite environment variables not being recognized by TypeScript
-declare global {
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  margin: 0;
+  line-height: 1.6;
+}
+
+#root, .container {
+  padding: 2rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--card-background);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+.user-info .user-email {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.user-info button {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin: 0 0 0.5rem 0;
+}
+
+header p {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 992px) {
+  .management-grid {
+    grid-template-columns: minmax(420px, 1fr) 1.5fr;
+    align-items: start;
   }
 }
 
-interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string;
-  readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
+.card {
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-// --- Supabase Client Setup ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-const isSupabaseConfigured = supabaseUrl && supabasePublishableKey;
-
-let supabase: SupabaseClient | null = null;
-if (isSupabaseConfigured) {
-  supabase = createClient(supabaseUrl, supabasePublishableKey);
+.card.is-editing {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color), 0 4px 12px var(--shadow-color);
 }
 
-// --- Constants, Helper Functions, and Type Definitions ---
-const DEFAULT_ROLES = [
-  'Director',
-  'Assistant Director',
-  'Teacher',
-  'Assistant Teacher',
-  'Janitor',
-  'Keeper',
-];
-
-const ETHIOPIAN_MONTHS = [
-  'መስከረም',
-  'ጥቅምት',
-  'ህዳር',
-  'ታህሳስ',
-  'ጥር',
-  'የካቲት',
-  'መጋቢት',
-  'ሚያዚያ',
-  'ግንቦት',
-  'ሰኔ',
-  'ሐምሌ',
-  'ነሐሴ',
-];
-
-interface Employee {
-  id: number;
-  name: string;
-  role: string;
-  company: string;
-  grossSalary: number;
-  transportAllowance: number;
-  phoneAllowance: number;
-  houseRentAllowance: number;
-  hasPension: boolean;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  margin-top: 0; /* Override default h2 margin */
 }
 
-interface PayrollResult {
-  id: number;
-  name: string;
-  role: string;
-  company: string;
-  grossSalary: number;
-  pension11: number;
-  transportAllowance: number;
-  phoneAllowance: number;
-  houseRentAllowance: number;
-  taxable: number;
-  totalGrossPay: number;
-  pension7: number;
-  pension18: number;
-  incomeTax: number;
-  totalDeduction: number;
-  netPay: number;
-  hasPension: boolean; // Pass this through for formula generation
+.card-header h2 {
+  font-size: 1.5rem;
+  margin: 0;
 }
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'ETB',
-  }).format(amount);
-};
-
-const calculateIncomeTax = (taxableAmount: number): number => {
-  if (taxableAmount <= 2000) return 0;
-  if (taxableAmount <= 4000) return taxableAmount * 0.15 - 300;
-  if (taxableAmount <= 7000) return taxableAmount * 0.2 - 500;
-  if (taxableAmount <= 10000) return taxableAmount * 0.25 - 850;
-  if (taxableAmount <= 14000) return taxableAmount * 0.3 - 1350;
-  return taxableAmount * 0.35 - 2050; // for > 14000
-};
-
-// --- SVG Icons ---
-
-const ViewPayslipIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-  </svg>
-);
-
-const RemoveIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    <line x1="10" y1="11" x2="10" y2="17"></line>
-    <line x1="14" y1="11" x2="14" y2="17"></line>
-  </svg>
-);
-
-const ExportIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="7 10 12 15 17 10"></polyline>
-    <line x1="12" y1="15" x2="12" y2="3"></line>
-  </svg>
-);
-
-const SearchIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="11" cy="11" r="8"></circle>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  </svg>
-);
-
-const PrintIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-    <rect x="6" y="14" width="12" height="8"></rect>
-  </svg>
-);
-
-// --- Payslip Modal Component ---
-
-interface PayslipModalProps {
-  result: PayrollResult;
-  onClose: () => void;
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
 }
 
-const PayslipModal = ({ result, onClose }: PayslipModalProps) => {
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onClose]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const payPeriod = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-  });
-
-  return (
-    <div
-      className="modal-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="modal-content"
-        ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div id="payslip-to-print">
-          <div className="payslip-header">
-            <div className="company-details">
-              <h1 className="company-name">{result.company}</h1>
-              <p className="company-address">123 Business Rd., Business City</p>
-            </div>
-            <span className="payslip-title">PAYSLIP</span>
-          </div>
-
-          <div className="payslip-employee-info">
-            <div>
-              <strong>Employee:</strong> {result.name}
-            </div>
-            <div>
-              <strong>Role:</strong> {result.role}
-            </div>
-            <div>
-              <strong>Pay Period:</strong> {payPeriod}
-            </div>
-          </div>
-
-          <div className="payslip-grid">
-            <div className="payslip-section">
-              <h3>Earnings</h3>
-              <table className="payslip-table">
-                <tbody>
-                  <tr>
-                    <td>Gross Salary</td>
-                    <td className="amount">
-                      {formatCurrency(result.grossSalary)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Transport Allowance</td>
-                    <td className="amount">
-                      {formatCurrency(result.transportAllowance)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Phone Allowance</td>
-                    <td className="amount">
-                      {formatCurrency(result.phoneAllowance)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>House Rent Allowance</td>
-                    <td className="amount">
-                      {formatCurrency(result.houseRentAllowance)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Pension (11%)</td>
-                    <td className="amount">
-                      {formatCurrency(result.pension11)}
-                    </td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>
-                      <strong>Total Gross Pay</strong>
-                    </td>
-                    <td className="amount">
-                      <strong>{formatCurrency(result.totalGrossPay)}</strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <div className="payslip-section">
-              <h3>Deductions</h3>
-              <table className="payslip-table">
-                <tbody>
-                  <tr>
-                    <td>Income Tax</td>
-                    <td className="amount">
-                      {formatCurrency(result.incomeTax)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Pension (18% - Post-Tax)</td>
-                    <td className="amount">
-                      {formatCurrency(result.pension18)}
-                    </td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>
-                      <strong>Total Deductions</strong>
-                    </td>
-                    <td className="amount">
-                      <strong>{formatCurrency(result.totalDeduction)}</strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          <div className="payslip-net-pay">
-            <span className="net-pay-label">Net Pay</span>
-            <span className="net-pay-amount">
-              {formatCurrency(result.netPay)}
-            </span>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button onClick={handlePrint} className="btn-icon">
-            <PrintIcon /> Print
-          </button>
-          <button onClick={onClose} className="btn-secondary">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Settings Modal Component ---
-interface SettingsModalProps {
-  onClose: () => void;
-  onProfileUpdate: (newData: {
-    businessName: string;
-    companies: string[];
-    roles: string[];
-  }) => void;
-  currentBusinessName: string;
-  currentCompanies: string[];
-  currentRoles: string[];
+.form-group.span-2, .form-group-checkbox.span-2 {
+    grid-column: span 2;
 }
 
-const SettingsModal = ({
-  onClose,
-  onProfileUpdate,
-  currentBusinessName,
-  currentCompanies,
-  currentRoles,
-}: SettingsModalProps) => {
-  // Password State
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
-
-  // Profile State
-  const [updatedBusinessName, setUpdatedBusinessName] =
-    useState(currentBusinessName);
-  const [updatedCompanies, setUpdatedCompanies] = useState(
-    currentCompanies.length > 0 ? [...currentCompanies] : ['']
-  );
-  const [updatedRoles, setUpdatedRoles] = useState(
-    currentRoles.length > 0 ? [...currentRoles] : ['']
-  );
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
-
-  const handlePasswordUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
-
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match.');
-      return;
-    }
-
-    setPasswordLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setPasswordLoading(false);
-
-    if (error) {
-      setPasswordError(`Failed to update password: ${error.message}`);
-    } else {
-      setPasswordSuccess('Password updated successfully!');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(''), 3000); // Clear message after 3s
-    }
-  };
-
-  const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setProfileError('');
-    setProfileSuccess('');
-
-    // --- Validation ---
-    if (!updatedBusinessName.trim()) {
-      setProfileError('Business name cannot be empty.');
-      return;
-    }
-
-    const finalCompanies = updatedCompanies
-      .map((c) => c.trim())
-      .filter(Boolean);
-    if (finalCompanies.length === 0) {
-      setProfileError('You must have at least one company name.');
-      return;
-    }
-    if (updatedCompanies.some((c) => !c.trim())) {
-      setProfileError('All company names must be filled out.');
-      return;
-    }
-
-    const finalRoles = updatedRoles.map((r) => r.trim()).filter(Boolean);
-    if (finalRoles.length === 0) {
-      setProfileError('You must have at least one role.');
-      return;
-    }
-    if (updatedRoles.some((r) => !r.trim())) {
-      setProfileError('All role names must be filled out.');
-      return;
-    }
-    // --- End Validation ---
-
-    setProfileLoading(true);
-    const newData = {
-      businessName: updatedBusinessName.trim(),
-      companies: finalCompanies,
-      roles: finalRoles,
-    };
-
-    const { error } = await supabase.auth.updateUser({ data: newData });
-    setProfileLoading(false);
-
-    if (error) {
-      setProfileError(`Failed to update profile: ${error.message}`);
-    } else {
-      onProfileUpdate(newData);
-      setProfileSuccess('Profile updated successfully!');
-      setTimeout(() => setProfileSuccess(''), 3000);
-    }
-  };
-
-  const handleCompanyChange = (index: number, value: string) => {
-    const newCompanies = [...updatedCompanies];
-    newCompanies[index] = value;
-    setUpdatedCompanies(newCompanies);
-  };
-
-  const handleAddCompany = () => {
-    setUpdatedCompanies([...updatedCompanies, '']);
-  };
-
-  const handleRemoveCompany = (indexToRemove: number) => {
-    if (updatedCompanies.length > 1) {
-      setUpdatedCompanies(
-        updatedCompanies.filter((_, index) => index !== indexToRemove)
-      );
-    }
-  };
-
-  const handleRoleChange = (index: number, value: string) => {
-    const newRoles = [...updatedRoles];
-    newRoles[index] = value;
-    setUpdatedRoles(newRoles);
-  };
-
-  const handleAddRole = () => {
-    setUpdatedRoles([...updatedRoles, '']);
-  };
-
-  const handleRemoveRole = (indexToRemove: number) => {
-    if (updatedRoles.length > 1) {
-      setUpdatedRoles(updatedRoles.filter((_, index) => index !== indexToRemove));
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content settings-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header">
-          <h2>Settings</h2>
-        </div>
-        <div className="settings-grid">
-          {/* Change Password Section */}
-          <div className="settings-section">
-            <h3>Change Password</h3>
-            <form onSubmit={handlePasswordUpdate}>
-              <div className="form-group">
-                <label htmlFor="newPassword">New Password</label>
-                <input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm New Password</label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  required
-                />
-              </div>
-              <button type="submit" disabled={passwordLoading}>
-                {passwordLoading ? 'Updating...' : 'Update Password'}
-              </button>
-              {passwordError && (
-                <div className="error-message">{passwordError}</div>
-              )}
-              {passwordSuccess && (
-                <div className="success-message">{passwordSuccess}</div>
-              )}
-            </form>
-          </div>
-
-          {/* Edit Profile Section */}
-          <div className="settings-section">
-            <h3>Edit Profile</h3>
-            <form onSubmit={handleProfileUpdate}>
-              {/* Business Name */}
-              <div className="form-group">
-                <label htmlFor="settingsBusinessName">Business Name</label>
-                <input
-                  id="settingsBusinessName"
-                  type="text"
-                  value={updatedBusinessName}
-                  onChange={(e) => setUpdatedBusinessName(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Companies */}
-              <h4>Companies</h4>
-              {updatedCompanies.map((company, index) => (
-                <div className="form-group" key={`company-${index}`}>
-                  <label htmlFor={`settingsCompanyName${index}`}>
-                    Company #{index + 1}
-                  </label>
-                  <div className="input-with-button">
-                    <input
-                      id={`settingsCompanyName${index}`}
-                      type="text"
-                      value={company}
-                      onChange={(e) =>
-                        handleCompanyChange(index, e.target.value)
-                      }
-                      required
-                    />
-                    {updatedCompanies.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCompany(index)}
-                        className="btn-icon-only remove-btn"
-                        aria-label={`Remove Company #${index + 1}`}
-                      >
-                        <RemoveIcon />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={handleAddCompany}
-                className="btn-secondary btn-add-item"
-              >
-                Add Another Company
-              </button>
-
-              {/* Roles */}
-              <h4 style={{ marginTop: '2rem' }}>Roles</h4>
-              {updatedRoles.map((role, index) => (
-                <div className="form-group" key={`role-${index}`}>
-                  <label htmlFor={`settingsRoleName${index}`}>
-                    Role #{index + 1}
-                  </label>
-                  <div className="input-with-button">
-                    <input
-                      id={`settingsRoleName${index}`}
-                      type="text"
-                      value={role}
-                      onChange={(e) => handleRoleChange(index, e.target.value)}
-                      required
-                    />
-                    {updatedRoles.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRole(index)}
-                        className="btn-icon-only remove-btn"
-                        aria-label={`Remove Role #${index + 1}`}
-                      >
-                        <RemoveIcon />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={handleAddRole}
-                className="btn-secondary btn-add-item"
-              >
-                Add Another Role
-              </button>
-
-              <button
-                type="submit"
-                disabled={profileLoading}
-                style={{ marginTop: '2rem' }}
-              >
-                {profileLoading ? 'Saving...' : 'Save Profile Changes'}
-              </button>
-              {profileError && (
-                <div className="error-message">{profileError}</div>
-              )}
-              {profileSuccess && (
-                <div className="success-message">{profileSuccess}</div>
-              )}
-            </form>
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button onClick={onClose} className="btn-secondary">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-// --- Delete Confirmation Modal Component ---
-
-interface DeleteConfirmationModalProps {
-  onClose: () => void;
-  onConfirm: () => void;
-  loading: boolean;
-  error: string | null;
+.form-group.span-4, .form-group-checkbox.span-4 {
+    grid-column: span 4;
 }
 
-const DeleteConfirmationModal = ({
-  onClose,
-  onConfirm,
-  loading,
-  error,
-}: DeleteConfirmationModalProps) => {
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content confirm-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3>Delete Account</h3>
-        <p>
-          Are you sure you want to delete your account? This action is permanent
-          and cannot be undone. All your employee and payroll data will be lost.
-        </p>
-        {error && <div className="error-message">{error}</div>}
-        <div className="confirm-modal-actions">
-          <button onClick={onClose} className="btn-secondary" disabled={loading}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} className="btn-danger" disabled={loading}>
-            {loading ? 'Deleting...' : 'Yes, Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Printable Report Component ---
-interface PrintableReportProps {
-  results: PayrollResult[];
-  scope: string | null;
-  reportDate: string;
-  businessName: string;
-  onViewPayslip: (result: PayrollResult) => void;
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
-const PrintableReport = ({
-  results,
-  scope,
-  reportDate,
-  businessName,
-  onViewPayslip,
-}: PrintableReportProps) => {
-  if (results.length === 0 || !scope) return null;
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
 
-  const totals = results.reduce(
-    (acc, result) => {
-      acc.grossSalary += result.grossSalary;
-      acc.pension11 += result.pension11;
-      acc.transportAllowance += result.transportAllowance;
-      acc.phoneAllowance += result.phoneAllowance;
-      acc.houseRentAllowance += result.houseRentAllowance;
-      acc.taxable += result.taxable;
-      acc.totalGrossPay += result.totalGrossPay;
-      acc.pension7 += result.pension7;
-      acc.pension18 += result.pension18;
-      acc.incomeTax += result.incomeTax;
-      acc.totalDeduction += result.totalDeduction;
-      acc.netPay += result.netPay;
-      return acc;
-    },
-    {
-      grossSalary: 0,
-      pension11: 0,
-      transportAllowance: 0,
-      phoneAllowance: 0,
-      houseRentAllowance: 0,
-      taxable: 0,
-      totalGrossPay: 0,
-      pension7: 0,
-      pension18: 0,
-      incomeTax: 0,
-      totalDeduction: 0,
-      netPay: 0,
+input[type='text'],
+input[type='number'],
+input[type='email'],
+input[type='password'],
+select {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  background-color: #fdfdfd;
+  color: #000;
+}
+
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.search-bar-container {
+  position: relative;
+  flex-grow: 1;
+}
+
+.company-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.company-filter-container label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.company-filter-container select {
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background-position: right 0.25rem center;
+}
+
+.search-bar-container svg {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.search-input {
+  padding-left: 2.5rem !important;
+}
+
+input[type='number'] {
+  text-align: center;
+}
+
+select {
+ appearance: none;
+ background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+ background-position: right 0.5rem center;
+ background-repeat: no-repeat;
+ background-size: 1.5em 1.5em;
+ padding-right: 2.5rem;
+}
+
+
+input[type='text']:focus,
+input[type='number']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+  background-color: #fff;
+}
+
+.form-group-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: var(--secondary-color);
+  flex-direction: row; /* Override form-group column direction */
+}
+
+.form-group-checkbox label {
+  margin-bottom: 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-group-checkbox input[type='checkbox'] {
+  width: 1.25em;
+  height: 1.25em;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  background-color: var(--primary-color);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--primary-hover-color);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+button:disabled {
+  background-color: #9e9e9e;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #e9ecf0;
+    border-color: #c8cdd3;
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  border-color: transparent;
+}
+.btn-danger:hover {
+  background-color: var(--danger-hover-color);
+}
+.user-info .btn-danger {
+  background-color: transparent;
+  color: var(--error-color);
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.user-info .btn-danger:hover {
+  background-color: var(--danger-color-light);
+  color: var(--danger-color-dark);
+}
+
+/* Employee Roster */
+.employee-roster {
+}
+
+.no-results-message {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: #666;
+  font-style: italic;
+}
+
+.roster-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.roster-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.roster-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+}
+
+.roster-item-name-role {
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.employee-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.employee-role {
+  font-size: 0.9rem;
+  color: #555;
+  background-color: var(--secondary-color);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.employee-company {
+  font-size: 0.9rem;
+  color: #3b82f6;
+  background-color: #dbeafe;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.roster-item-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.roster-item-details strong {
+    color: var(--text-color);
+}
+
+.roster-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-icon {
+    width: auto;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.btn-icon-only {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-icon-only:hover {
+  background-color: var(--secondary-color);
+  border-color: #c8cdd3;
+}
+
+.btn-icon-only svg {
+  width: 16px;
+  height: 16px;
+}
+
+.remove-btn {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color-dark);
+    border-color: transparent;
+}
+.remove-btn:hover {
+    background-color: #fecaca;
+}
+
+.calculate-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.report-date-picker {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    background-color: var(--card-background);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.report-date-picker .form-group {
+    margin-bottom: 0;
+}
+
+.report-date-picker label {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.report-date-picker select,
+.report-date-picker input {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.calculate-btn {
+  width: auto;
+  min-width: 200px;
+}
+
+.error-message {
+  background-color: #fff1f2;
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.success-message {
+  background-color: var(--success-light-color);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.results-card {
+  margin-top: 2rem;
+}
+.results-card .report-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.results-card .report-actions button {
+  width: auto;
+}
+/* Auth Styles */
+.loading-fullscreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 1.5rem;
+}
+.auth-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 4rem); /* Full height minus padding */
+    padding: 1rem;
+}
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+}
+.auth-card .card-header {
+    justify-content: center;
+    text-align: center;
+}
+
+.auth-description {
+    text-align: center;
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 2rem 0 1.5rem;
+}
+
+.auth-form h3 {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.company-setup-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.company-setup-grid .form-group {
+  margin-bottom: 0;
+}
+
+.auth-toggle {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    font-size: inherit;
+    box-shadow: none;
+}
+.btn-link:hover {
+    text-decoration: underline;
+    background: none;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-modal-content {
+  max-width: 900px;
+  padding: 0;
+}
+
+.settings-modal-content .modal-header {
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-modal-content .modal-header h2 {
+  margin: 0;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+@media(min-width: 768px) {
+  .settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.settings-section h3 {
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.settings-section h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.input-with-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-with-button input {
+  flex-grow: 1;
+}
+
+.btn-add-item {
+  margin-top: 0.5rem;
+}
+
+
+.confirm-modal-content {
+  max-width: 450px;
+  padding: 2rem;
+  text-align: center;
+}
+.confirm-modal-content h3 {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+.confirm-modal-content p {
+  margin-bottom: 1.5rem;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.confirm-modal-actions button {
+  width: auto;
+  min-width: 120px;
+}
+
+#payslip-to-print {
+  padding: 2.5rem;
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.payslip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.company-name {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+.company-address {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.payslip-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-top: 0.25rem;
+}
+
+.payslip-employee-info {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  background-color: var(--secondary-color);
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+.payslip-employee-info strong {
+    margin-left: 0.5ch;
+}
+
+.payslip-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+    .payslip-grid {
+        grid-template-columns: 1fr 1fr;
     }
-  );
+}
 
-  return (
-    <div className="printable-report">
-      <header className="print-header">
-        <h1>Payroll Report</h1>
-        <h2>{businessName}</h2>
-        <div className="print-header-details">
-          <span>
-            For: <strong>{scope}</strong>
-          </span>
-          <span>
-            Date: <strong>{reportDate}</strong>
-          </span>
-        </div>
-      </header>
-      <div className="table-wrapper">
-        <table className="print-table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Gross Salary</th>
-              <th>Pension (11%)</th>
-              <th>Transport</th>
-              <th>Phone</th>
-              <th>House Rent</th>
-              <th>Taxable</th>
-              <th>Total Gross</th>
-              <th>Pension (7%)</th>
-              <th>Pension (18%)</th>
-              <th>Income Tax</th>
-              <th>Total Deduction</th>
-              <th>Net Pay</th>
-              <th className="screen-only">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((result) => (
-              <tr key={result.id}>
-                <td>{result.name}</td>
-                <td>{formatCurrency(result.grossSalary)}</td>
-                <td className="pension-deduction bold-column">
-                  {formatCurrency(result.pension11)}
-                </td>
-                <td>{formatCurrency(result.transportAllowance)}</td>
-                <td>{formatCurrency(result.phoneAllowance)}</td>
-                <td>{formatCurrency(result.houseRentAllowance)}</td>
-                <td>{formatCurrency(result.taxable)}</td>
-                <td className="bold-column">
-                  {formatCurrency(result.totalGrossPay)}
-                </td>
-                <td className="bold-column">{formatCurrency(result.pension7)}</td>
-                <td className="bold-column">
-                  {formatCurrency(result.pension18)}
-                </td>
-                <td className="bold-column">
-                  {formatCurrency(result.incomeTax)}
-                </td>
-                <td className="total-deduction bold-column">
-                  {formatCurrency(result.totalDeduction)}
-                </td>
-                <td className="total-netpay bold-column">
-                  {formatCurrency(result.netPay)}
-                </td>
-                <td className="screen-only">
-                  <button
-                    onClick={() => onViewPayslip(result)}
-                    className="btn-icon-only"
-                    aria-label="View Payslip"
-                  >
-                    <ViewPayslipIcon />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>
-                <strong>TOTALS</strong>
-              </td>
-              <td>
-                <strong>{formatCurrency(totals.grossSalary)}</strong>
-              </td>
-              <td className="pension-deduction bold-column">
-                <strong>{formatCurrency(totals.pension11)}</strong>
-              </td>
-              <td>
-                <strong>{formatCurrency(totals.transportAllowance)}</strong>
-              </td>
-              <td>
-                <strong>{formatCurrency(totals.phoneAllowance)}</strong>
-              </td>
-              <td>
-                <strong>{formatCurrency(totals.houseRentAllowance)}</strong>
-              </td>
-              <td>
-                <strong>{formatCurrency(totals.taxable)}</strong>
-              </td>
-              <td className="bold-column">
-                <strong>{formatCurrency(totals.totalGrossPay)}</strong>
-              </td>
-              <td className="bold-column">
-                <strong>{formatCurrency(totals.pension7)}</strong>
-              </td>
-              <td className="bold-column">
-                <strong>{formatCurrency(totals.pension18)}</strong>
-              </td>
-              <td className="bold-column">
-                <strong>{formatCurrency(totals.incomeTax)}</strong>
-              </td>
-              <td className="total-deduction bold-column">
-                <strong>{formatCurrency(totals.totalDeduction)}</strong>
-              </td>
-              <td className="total-netpay bold-column">
-                <strong>{formatCurrency(totals.netPay)}</strong>
-              </td>
-              <td className="screen-only"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <footer className="report-footer">
-        <div className="signature-block">
-          <h4>ከፋይ</h4>
-          <p>ስም፡ _______________________</p>
-          <p>ፊርማ፡ ______________________</p>
-          <p>ቀን፡ _________________________</p>
-        </div>
-        <div className="signature-block">
-          <h4>ያፀደቀው</h4>
-          <p>ስም፡ _______________________</p>
-          <p>ፊርማ፡ ______________________</p>
-          <p>ቀን፡ _________________________</p>
-        </div>
-      </footer>
-    </div>
-  );
-};
+.payslip-section h3 {
+  font-size: 1.25rem;
+  margin: 0 0 1rem 0;
+  font-weight: bold;
+}
 
-// --- App Component ---
+.payslip-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+.payslip-table td {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+}
+.payslip-table tr:last-child td {
+  border-bottom: none;
+}
+.payslip-table .amount {
+  text-align: right;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+.payslip-table tfoot {
+  border-top: 2px solid var(--text-color);
+  font-weight: bold;
+}
+.payslip-table tfoot td {
+    padding-top: 0.6rem;
+}
 
-function App() {
-  // Auth state
-  const [session, setSession] = useState<Session | null>(null);
-  const [authView, setAuthView] = useState<'signIn' | 'signUp'>('signIn');
-  const [authStep, setAuthStep] = useState<'form' | 'verify'>('form');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [appLoading, setAppLoading] = useState(true);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+.payslip-net-pay {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-  // Sign-up specific state
-  const [businessName, setBusinessName] = useState('');
-  const [numCompanies, setNumCompanies] = useState(1);
-  const [companyNames, setCompanyNames] = useState(['']);
-  const [numRoles, setNumRoles] = useState(1);
-  const [roleNames, setRoleNames] = useState(['']);
+.net-pay-label {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
 
-  // App state
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [userBusinessName, setUserBusinessName] = useState('');
-  const [userCompanies, setUserCompanies] = useState<string[]>([]);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
+.net-pay-amount {
+  font-size: 1.6rem;
+  font-weight: bold;
+}
 
-  // Form state
-  const [employeeName, setEmployeeName] = useState('');
-  const [employeeRole, setEmployeeRole] = useState('');
-  const [employeeCompany, setEmployeeCompany] = useState('');
-  const [employeeGrossSalary, setEmployeeGrossSalary] = useState('');
-  const [employeeTransport, setEmployeeTransport] = useState('');
-  const [employeePhone, setEmployeePhone] = useState('');
-  const [employeeHouseRent, setEmployeeHouseRent] = useState('');
-  const [employeeHasPension, setEmployeeHasPension] = useState(true);
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--secondary-color);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
 
-  // Editing state
-  const [editingEmployeeId, setEditingEmployeeId] = useState<number | null>(
-    null
-  );
+.modal-footer button {
+    width: auto;
+}
 
-  // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('All Companies');
+.printable-report {
+  background: var(--card-background);
+}
 
-  // Payroll calculation state
-  const [payrollResults, setPayrollResults] = useState<PayrollResult[]>([]);
-  const [payrollReportScope, setPayrollReportScope] = useState<string | null>(
-    null
-  );
-  const [payslipData, setPayslipData] = useState<PayrollResult | null>(null);
-  const [loading, setLoading] = useState(true); // For employee data fetching
-  const [error, setError] = useState('');
+.print-header h1 {
+  text-align: center;
+  color: var(--primary-color);
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+}
+.print-header h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-color);
+}
+.print-header-details {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-top: 1px solid #ccc;
+  padding-top: 0.75rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
 
-  // Report Date State
-  const [reportMonth, setReportMonth] = useState(ETHIOPIAN_MONTHS[0]);
-  const [reportYear, setReportYear] = useState('2018');
-  const [reportDateString, setReportDateString] = useState('');
+.table-wrapper {
+  overflow-x: auto;
+}
 
-  // Fail-fast check for Supabase configuration
-  if (!isSupabaseConfigured) {
-    return (
-      <div className="auth-container">
-        <div className="card auth-card">
-          <div className="error-message">
-            <strong>Configuration Error</strong>
-            <p style={{ margin: '0.5rem 0 0 0', textAlign: 'left' }}>
-              The application is not connected to a backend database. Please ensure the{' '}
-              <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code>{' '}
-              are correctly configured in your <code>.env</code> file.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-table th, .print-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.print-table th {
+  background-color: var(--secondary-color);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.print-table tfoot td {
+  border-top: 2px solid var(--text-color);
+  font-size: 1.1rem;
+}
+
+.print-table .total-deduction {
+  color: var(--danger-color);
+  font-weight: 600;
+}
+.print-table .total-netpay {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.pension-deduction {
+  color: var(--error-color);
+  font-weight: 600;
+}
+
+.print-table td.bold-column {
+  font-weight: 600;
+}
+
+.report-footer {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 4rem;
+  padding: 2rem 1rem 1rem 1rem;
+}
+
+.signature-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.signature-block h4 {
+  font-weight: bold;
+  text-decoration: underline;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.signature-block p {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* --- PRINT STYLES --- */
+@media print {
+  /* --- GENERAL SETUP --- */
+  body {
+    padding: 0;
+    margin: 0;
+    background-color: #fff;
+    font-size: 10pt;
+  }
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
   }
 
-  useEffect(() => {
-    setAppLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        const metadata = session.user?.user_metadata;
-        const companies = metadata?.companies || [];
-        const roles = metadata?.roles || DEFAULT_ROLES;
-        setUserCompanies(companies);
-        setUserRoles(roles);
-        setUserBusinessName(metadata?.businessName || '');
-        if (companies.length > 0) {
-          setEmployeeCompany(companies[0]);
-        }
-        if (roles.length > 0) {
-          setEmployeeRole(roles[0]);
-        }
-      }
-      setAppLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        const metadata = session.user?.user_metadata;
-        const companies = metadata?.companies || [];
-        const roles = metadata?.roles || DEFAULT_ROLES;
-        setUserCompanies(companies);
-        setUserRoles(roles);
-        setUserBusinessName(metadata?.businessName || '');
-        if (companies.length > 0 && !employeeCompany) {
-          setEmployeeCompany(companies[0]);
-        }
-        if (roles.length > 0 && !employeeRole) {
-          setEmployeeRole(roles[0]);
-        }
-      } else {
-        // Reset on logout
-        setUserCompanies([]);
-        setUserRoles([]);
-        setUserBusinessName('');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchEmployees = async () => {
-    if (!supabase) return;
-    setLoading(true);
-    setError('');
-    try {
-      const { data, error } = await supabase.from('employees').select('*');
-      if (error) throw error;
-      if (data) {
-        // Map snake_case from DB to camelCase for the app
-        const formattedData = data.map((emp) => ({
-          id: emp.id,
-          name: emp.name,
-          role: emp.role,
-          company: emp.company,
-          grossSalary: emp.gross_salary,
-          transportAllowance: emp.transport_allowance,
-          phoneAllowance: emp.phone_allowance,
-          houseRentAllowance: emp.house_rent_allowance,
-          hasPension: emp.has_retirement,
-        }));
-        setEmployees(formattedData);
-      }
-    } catch (error: any) {
-      setError(`Failed to fetch employees: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (session) {
-      fetchEmployees();
-    }
-  }, [session]);
-
-  const resetForm = () => {
-    setEmployeeName('');
-    setEmployeeRole(userRoles[0] || '');
-    setEmployeeCompany(userCompanies[0] || '');
-    setEmployeeGrossSalary('');
-    setEmployeeTransport('');
-    setEmployeePhone('');
-    setEmployeeHouseRent('');
-    setEmployeeHasPension(true);
-    setEditingEmployeeId(null);
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!supabase || !session) return;
-
-    const trimmedName = employeeName.trim();
-    if (!trimmedName) {
-      setError('Employee name cannot be empty.');
-      return;
-    }
-
-    const isDuplicate = employees.some(
-      (emp) =>
-        emp.name.toLowerCase() === trimmedName.toLowerCase() &&
-        emp.id !== editingEmployeeId
-    );
-
-    if (isDuplicate) {
-      setError(
-        'An employee with this name already exists. Please use a different name.'
-      );
-      return;
-    }
-
-    setError('');
-
-    if (trimmedName && employeeRole) {
-      const employeeData = {
-        name: trimmedName,
-        role: employeeRole,
-        company: employeeCompany,
-        gross_salary: parseFloat(employeeGrossSalary) || 0,
-        transport_allowance: parseFloat(employeeTransport) || 0,
-        phone_allowance: parseFloat(employeePhone) || 0,
-        house_rent_allowance: parseFloat(employeeHouseRent) || 0,
-        has_retirement: employeeHasPension,
-      };
-
-      try {
-        if (editingEmployeeId) {
-          const { error } = await supabase
-            .from('employees')
-            .update(employeeData)
-            .eq('id', editingEmployeeId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('employees').insert({
-            ...employeeData,
-            user_id: session.user.id,
-          });
-          if (error) throw error;
-        }
-        resetForm();
-        fetchEmployees();
-      } catch (error: any) {
-        setError(`Failed to save employee: ${error.message}`);
-      }
-    }
-  };
-
-  const handleStartEdit = (employee: Employee) => {
-    setEditingEmployeeId(employee.id);
-    setEmployeeName(employee.name);
-    setEmployeeRole(employee.role);
-    setEmployeeCompany(employee.company);
-    setEmployeeGrossSalary(String(employee.grossSalary));
-    setEmployeeTransport(String(employee.transportAllowance));
-    setEmployeePhone(String(employee.phoneAllowance));
-    setEmployeeHouseRent(String(employee.houseRentAllowance));
-    setEmployeeHasPension(employee.hasPension);
-  };
-
-  const handleCancelEdit = () => {
-    resetForm();
-  };
-
-  const handleRemoveEmployee = async (id: number) => {
-    if (!supabase) return;
-    try {
-      const { error } = await supabase.from('employees').delete().eq('id', id);
-      if (error) throw error;
-      fetchEmployees();
-      if (id === editingEmployeeId) {
-        resetForm();
-      }
-    } catch (error: any) {
-      setError(`Failed to remove employee: ${error.message}`);
-    }
-  };
-
-  const handleCalculatePayroll = () => {
-    setPayrollResults([]);
-    setError('');
-
-    if (!reportMonth || !reportYear.trim()) {
-      setError('Please select a month and enter a year for the report.');
-      return;
-    }
-
-    const employeesToCalculate = employees.filter((emp) => {
-      if (selectedCompany === 'All Companies') {
-        return true;
-      }
-      return emp.company === selectedCompany;
-    });
-
-    const employeesWithData = employeesToCalculate.filter(
-      (emp) => emp.grossSalary > 0
-    );
-
-    if (employeesWithData.length === 0) {
-      setError(
-        `Please add at least one employee with a gross salary for ${selectedCompany}.`
-      );
-      return;
-    }
-
-    const finalResults: PayrollResult[] = employeesWithData.map((emp) => {
-      const pension11 = emp.hasPension ? emp.grossSalary * 0.11 : 0;
-      const totalGrossPay =
-        emp.grossSalary +
-        pension11 +
-        emp.transportAllowance +
-        emp.phoneAllowance +
-        emp.houseRentAllowance;
-
-      const pension7 = emp.hasPension ? emp.grossSalary * 0.07 : 0;
-      const pension18 = emp.hasPension ? emp.grossSalary * 0.18 : 0;
-
-      const taxable =
-        emp.grossSalary + emp.phoneAllowance + emp.houseRentAllowance;
-
-      const incomeTax = calculateIncomeTax(taxable);
-      const totalDeduction = pension18 + incomeTax;
-      const finalNetPay = totalGrossPay - totalDeduction;
-
-      return {
-        id: emp.id,
-        name: emp.name,
-        role: emp.role,
-        company: emp.company,
-        grossSalary: emp.grossSalary,
-        transportAllowance: emp.transportAllowance,
-        phoneAllowance: emp.phoneAllowance,
-        houseRentAllowance: emp.houseRentAllowance,
-        taxable,
-        totalGrossPay,
-        pension11,
-        pension7,
-        pension18,
-        incomeTax,
-        totalDeduction,
-        netPay: finalNetPay,
-        hasPension: emp.hasPension,
-      };
-    });
-
-    setPayrollResults(finalResults);
-    setPayrollReportScope(selectedCompany);
-    const formattedDate = `${reportMonth}, ${reportYear}`;
-    setReportDateString(formattedDate);
-    setTimeout(() => {
-      document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
-
-  const handleExportToExcel = () => {
-    if (payrollResults.length === 0 || !payrollReportScope) return;
-
-    // --- 1. DEFINE STYLES ---
-    const numberFormat = '#,##0'; // Format with commas, no decimals
-    const border = {
-      top: { style: 'thin', color: { rgb: 'FF000000' } },
-      bottom: { style: 'thin', color: { rgb: 'FF000000' } },
-      left: { style: 'thin', color: { rgb: 'FF000000' } },
-      right: { style: 'thin', color: { rgb: 'FF000000' } },
-    };
-
-    const titleStyle = {
-      font: { name: 'Calibri', sz: 16, bold: true },
-      alignment: { horizontal: 'center', vertical: 'center' },
-    };
-    const businessNameStyle = {
-      font: { name: 'Calibri', sz: 16, bold: true },
-      alignment: { horizontal: 'center', vertical: 'center' },
-    };
-    const detailsStyle = { font: { name: 'Calibri', sz: 11 } };
-    const dateStyle = {
-      font: { name: 'Calibri', sz: 11 },
-      alignment: { horizontal: 'right' },
-    };
-    const headerStyle = {
-      font: { name: 'Calibri', sz: 11, bold: true },
-      border,
-      alignment: {
-        horizontal: 'center',
-        vertical: 'center',
-        wrapText: true,
-      },
-    };
-    const defaultCellStyle = {
-      border,
-      font: { name: 'Calibri', sz: 11 },
-      alignment: { horizontal: 'left' },
-    };
-    const numberCellStyle = {
-      border,
-      font: { name: 'Calibri', sz: 11 },
-      numFmt: numberFormat,
-      alignment: { horizontal: 'right' },
-    };
-    const totalRowStyle = {
-      font: { name: 'Calibri', sz: 11, bold: true },
-      border,
-      alignment: { horizontal: 'left' },
-    };
-    const totalNumberStyle = {
-      ...totalRowStyle,
-      numFmt: numberFormat,
-      alignment: { horizontal: 'right' },
-    };
-    const signatureTitleStyle = { font: { name: 'Nyala', sz: 12, bold: true } };
-    const signatureFieldStyle = { font: { name: 'Nyala', sz: 12 } };
-
-    // --- 2. PREPARE DATA ---
-    const headers = [
-      'Employee',
-      'Gross\nSalary',
-      'Pension\n(11%)',
-      'Transpor\nt',
-      'Phone',
-      'House\nRent',
-      'Taxable',
-      'Total\nGross',
-      'Pension\n(7%)',
-      'Pension\n(18%)',
-      'Income\nTax',
-      'Total\nDeduction',
-      'Net\nPay',
-    ];
-
-    const data = payrollResults.map((result) => [
-      result.name,
-      result.grossSalary,
-      result.pension11,
-      result.transportAllowance,
-      result.phoneAllowance,
-      result.houseRentAllowance,
-      result.taxable,
-      result.totalGrossPay,
-      result.pension7,
-      result.pension18,
-      result.incomeTax,
-      result.totalDeduction,
-      result.netPay,
-    ]);
-
-    const totals = payrollResults.reduce(
-      (acc, result) => {
-        // This is now just for initial display, formulas will do the real work
-        Object.keys(acc).forEach((key) => {
-          acc[key as keyof typeof acc] += result[key as keyof typeof result];
-        });
-        return acc;
-      },
-      {
-        grossSalary: 0,
-        pension11: 0,
-        transportAllowance: 0,
-        phoneAllowance: 0,
-        houseRentAllowance: 0,
-        taxable: 0,
-        totalGrossPay: 0,
-        pension7: 0,
-        pension18: 0,
-        incomeTax: 0,
-        totalDeduction: 0,
-        netPay: 0,
-      }
-    );
-
-    const totalsRow = [
-      'TOTALS',
-      totals.grossSalary,
-      totals.pension11,
-      totals.transportAllowance,
-      totals.phoneAllowance,
-      totals.houseRentAllowance,
-      totals.taxable,
-      totals.totalGrossPay,
-      totals.pension7,
-      totals.pension18,
-      totals.incomeTax,
-      totals.totalDeduction,
-      totals.netPay,
-    ];
-
-    // --- 3. CREATE WORKSHEET DATA ARRAY ---
-    const ws_data = [
-      ['Payroll Report'],
-      [userBusinessName],
-      [],
-      [
-        `For: ${payrollReportScope}`,
-        ...Array(11).fill(null),
-        `Date: ${reportDateString}`,
-      ],
-      headers,
-      ...data,
-      totalsRow,
-      [],
-      [],
-      [],
-      [
-        null,
-        null,
-        'ከፋይ',
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        'ያፀደቀው',
-      ],
-      [
-        null,
-        null,
-        'ስም፡ _______________________',
-        ...Array(6).fill(null),
-        'ስም፡ _______________________',
-      ],
-      [
-        null,
-        null,
-        'ፊርማ፡ ______________________',
-        ...Array(6).fill(null),
-        'ፊርማ፡ ______________________',
-      ],
-      [
-        null,
-        null,
-        'ቀን፡ _________________________',
-        ...Array(6).fill(null),
-        'ቀን፡ _________________________',
-      ],
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-    // --- 4. INSERT FORMULAS ---
-    const dataStartRow = 6; // Excel row number (1-based)
-    payrollResults.forEach((result, index) => {
-      const row = dataStartRow + index;
-      const pensionCheck = result.hasPension;
-
-      // C: Pension (11%)
-      ws[`C${row}`] = { t: 'f', f: pensionCheck ? `B${row}*0.11` : '0' };
-      // G: Taxable
-      ws[`G${row}`] = { t: 'f', f: `B${row}+E${row}+F${row}` };
-      // H: Total Gross
-      ws[`H${row}`] = { t: 'f', f: `B${row}+C${row}+D${row}+E${row}+F${row}` };
-      // I: Pension (7%) - Not part of calculation but good to have
-      ws[`I${row}`] = { t: 'f', f: pensionCheck ? `B${row}*0.07` : '0' };
-      // J: Pension (18%)
-      ws[`J${row}`] = { t: 'f', f: pensionCheck ? `B${row}*0.18` : '0' };
-      // K: Income Tax (nested IF for tax brackets)
-      ws[`K${row}`] = {
-        t: 'f',
-        f: `IF(G${row}<=2000,0,IF(G${row}<=4000,G${row}*0.15-300,IF(G${row}<=7000,G${row}*0.2-500,IF(G${row}<=10000,G${row}*0.25-850,IF(G${row}<=14000,G${row}*0.3-1350,G${row}*0.35-2050)))))`,
-      };
-      // L: Total Deduction
-      ws[`L${row}`] = { t: 'f', f: `J${row}+K${row}` };
-      // M: Net Pay
-      ws[`M${row}`] = { t: 'f', f: `H${row}-L${row}` };
-    });
-
-    // Totals Row Formulas
-    const totalRowNumber = dataStartRow + payrollResults.length;
-    if (payrollResults.length > 0) {
-      const lastDataRow = totalRowNumber - 1;
-      const columnsToSum = 'BCDEFGHIJKLMNOPQRSTUVWXYZ'
-        .slice(0, headers.length - 1)
-        .split('');
-      columnsToSum.forEach((col) => {
-        ws[`${col}${totalRowNumber}`] = {
-          t: 'f',
-          f: `SUM(${col}${dataStartRow}:${col}${lastDataRow})`,
-        };
-      });
-    }
-
-    // --- 5. SET ROW HEIGHTS & MERGE CELLS ---
-    ws['!rows'] = [];
-    ws['!rows'][0] = { hpt: 30 };
-    ws['!rows'][1] = { hpt: 24 };
-    ws['!rows'][4] = { hpt: 40 };
-
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
-    ];
-
-    // --- 6. APPLY STYLES TO CELLS ---
-    const headerRowIndex = 4;
-    const dataStartIndex = headerRowIndex + 1;
-    const totalRowIndex = dataStartIndex + data.length;
-    const footerTitleRow = totalRowIndex + 4;
-
-    Object.keys(ws).forEach((cellRef) => {
-      if (cellRef.startsWith('!')) return;
-      const { c, r } = XLSX.utils.decode_cell(cellRef);
-      const cell = ws[cellRef];
-
-      if (r === 0) cell.s = titleStyle;
-      else if (r === 1) cell.s = businessNameStyle;
-      else if (r === 3) {
-        if (c === 0) cell.s = detailsStyle;
-        else if (c === headers.length - 1) cell.s = dateStyle;
-      } else if (r === headerRowIndex) cell.s = headerStyle;
-      else if (r >= dataStartIndex && r < totalRowIndex) {
-        cell.s = c === 0 ? defaultCellStyle : numberCellStyle;
-      } else if (r === totalRowIndex) {
-        cell.s = c === 0 ? totalRowStyle : totalNumberStyle;
-      } else if (r === footerTitleRow) {
-        if (c === 2 || c === 9) cell.s = signatureTitleStyle;
-      } else if (r > footerTitleRow && r <= footerTitleRow + 3) {
-        if (c === 2 || c === 9) cell.s = signatureFieldStyle;
-      }
-    });
-
-    // --- 7. SET COLUMN WIDTHS (Adjusted to match image) ---
-    ws['!cols'] = [
-      { wch: 8.75 }, // Employee
-      { wch: 7.75 }, // Gross Salary
-      { wch: 7.75 }, // Pension (11%)
-      { wch: 7.75 }, // Transport
-      { wch: 7.75 }, // Phone
-      { wch: 7.75 }, // House Rent
-      { wch: 7.75 }, // Taxable
-      { wch: 7.75 }, // Total Gross
-      { wch: 7.75 }, // Pension (7%)
-      { wch: 7.75 }, // Pension (18%)
-      { wch: 7.75 }, // Income Tax
-      { wch: 7.75 }, // Total Deduction
-      { wch: 7.75 }, // Net Pay
-    ];
-
-    // --- 8. CREATE AND DOWNLOAD WORKBOOK ---
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Payroll Report');
-    const fileName = `PayrollReport_${payrollReportScope.replace(
-      /\s+/g,
-      '_'
-    )}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-  };
-
-  const handleCompanyFilterChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    setSelectedCompany(e.target.value);
-    setPayrollResults([]);
-    setPayrollReportScope(null);
-    setError('');
-  };
-
-  const handleNumCompaniesChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const count = parseInt(e.target.value, 10);
-    setNumCompanies(count);
-    setCompanyNames((currentNames) => {
-      const newNames = [...currentNames].slice(0, count);
-      while (newNames.length < count) {
-        newNames.push('');
-      }
-      return newNames;
-    });
-  };
-
-  const handleCompanyNameChange = (index: number, value: string) => {
-    const newCompanyNames = [...companyNames];
-    newCompanyNames[index] = value;
-    setCompanyNames(newCompanyNames);
-  };
-
-  const handleNumRolesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const count = parseInt(e.target.value, 10);
-    setNumRoles(count);
-    setRoleNames((currentNames) => {
-      const newNames = [...currentNames].slice(0, count);
-      while (newNames.length < count) {
-        newNames.push('');
-      }
-      return newNames;
-    });
-  };
-
-  const handleRoleNameChange = (index: number, value: string) => {
-    const newRoleNames = [...roleNames];
-    newRoleNames[index] = value;
-    setRoleNames(newRoleNames);
-  };
-
-  const handleAuthAction = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!supabase) return;
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      if (authView === 'signIn') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-      } else {
-        // Sign Up Flow
-        if (!username.trim()) throw new Error('Username cannot be empty.');
-        if (!businessName.trim())
-          throw new Error('Business name cannot be empty.');
-
-        const trimmedCompanyNames = companyNames.map((name) => name.trim());
-        if (trimmedCompanyNames.some((name) => name === ''))
-          throw new Error('All company names must be filled out.');
-
-        const trimmedRoleNames = roleNames.map((name) => name.trim());
-        if (trimmedRoleNames.some((name) => name === ''))
-          throw new Error('All role names must be filled out.');
-
-        // This creates the user and sends the verification code.
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              username: username.trim(),
-              businessName: businessName.trim(),
-              companies: trimmedCompanyNames,
-              roles: trimmedRoleNames,
-            },
-          },
-        });
-
-        if (error) throw error;
-        // Switch to the verification view
-        setAuthStep('verify');
-      }
-    } catch (error: any) {
-      setAuthError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!supabase) return;
-    setAuthLoading(true);
-    setAuthError(null);
-
-    try {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.verifyOtp({
-        email,
-        token: verificationCode,
-        type: 'signup',
-      });
-
-      if (error) throw error;
-      // onAuthStateChange will handle setting the session and navigating
-      // to the main app view automatically.
-    } catch (error: any) {
-      setAuthError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!supabase) return;
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error(
-        'Server logout failed, forcing client-side logout:',
-        error.message
-      );
-    }
-    setSession(null);
-    setAuthStep('form');
-    setEmployees([]);
-    setPayrollResults([]);
-    setUserCompanies([]);
-    setUserRoles([]);
-    setUserBusinessName('');
-    resetForm();
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!supabase) return;
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      // This RPC function must be created in your Supabase SQL Editor
-      const { error } = await supabase.rpc('delete_user');
-      if (error) throw error;
-
-      // The RPC call invalidates the session, but we sign out for a clean exit
-      await supabase.auth.signOut();
-      setSession(null); // Force UI update immediately
-      setShowDeleteConfirm(false);
-    } catch (error: any) {
-      setDeleteError(
-        `Failed to delete account: ${error.message}. Ensure the 'delete_user' function exists in Supabase.`
-      );
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleViewPayslip = (result: PayrollResult) => {
-    setPayslipData(result);
-  };
-
-  const handleProfileUpdated = (newData: {
-    businessName: string;
-    companies: string[];
-    roles: string[];
-  }) => {
-    setUserBusinessName(newData.businessName);
-    setUserCompanies(newData.companies);
-    setUserRoles(newData.roles);
-  };
-
-  const isEditing = editingEmployeeId !== null;
-
-  const filteredEmployees = employees
-    .filter((emp) => {
-      if (selectedCompany === 'All Companies') {
-        return true;
-      }
-      return emp.company === selectedCompany;
-    })
-    .filter(
-      (emp) =>
-        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-  if (appLoading) {
-    return <div className="loading-fullscreen">Loading...</div>;
+  .screen-only {
+    display: none !important;
+  }
+  
+  .container {
+    padding: 0;
+    margin: 0;
+    max-width: none;
   }
 
-  if (!session) {
-    return (
-      <div className="auth-container">
-        <div className="card auth-card">
-          {authStep === 'form' && (
-            <>
-              <div className="card-header">
-                <h2>
-                  {authView === 'signIn' ? 'Welcome Back' : 'Create an Account'}
-                </h2>
-              </div>
-              <p className="auth-description">
-                {authView === 'signIn'
-                  ? 'Sign in to manage your payroll.'
-                  : 'Sign up to get started.'}
-              </p>
-              <form onSubmit={handleAuthAction} className="auth-form">
-                {authView === 'signUp' && (
-                  <>
-                    <div className="form-group">
-                      <label htmlFor="username">Username</label>
-                      <input
-                        id="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Choose a username"
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="businessName">Business Name</label>
-                      <input
-                        id="businessName"
-                        type="text"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="Your Company's Name"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="password">Password</label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-
-                {authView === 'signUp' && (
-                  <>
-                    <hr />
-                    <div className="company-setup-grid">
-                      <h3>Company Setup</h3>
-                      <div className="form-group">
-                        <label htmlFor="numCompanies">
-                          How many companies do you manage?
-                        </label>
-                        <select
-                          id="numCompanies"
-                          value={numCompanies}
-                          onChange={handleNumCompaniesChange}
-                        >
-                          <option value={1}>1</option>
-                          <option value={2}>2</option>
-                          <option value={3}>3</option>
-                          <option value={4}>4</option>
-                          <option value={5}>5</option>
-                        </select>
-                      </div>
-                      {Array.from({ length: numCompanies }).map((_, index) => (
-                        <div className="form-group" key={`company-${index}`}>
-                          <label htmlFor={`companyName${index + 1}`}>
-                            Company #{index + 1} Name
-                          </label>
-                          <input
-                            id={`companyName${index + 1}`}
-                            type="text"
-                            placeholder={`e.g., My Business Inc.`}
-                            value={companyNames[index] || ''}
-                            onChange={(e) =>
-                              handleCompanyNameChange(index, e.target.value)
-                            }
-                            required
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <hr />
-                    <div className="company-setup-grid">
-                      <h3>Role Setup</h3>
-                      <div className="form-group">
-                        <label htmlFor="numRoles">
-                          How many roles will you have?
-                        </label>
-                        <select
-                          id="numRoles"
-                          value={numRoles}
-                          onChange={handleNumRolesChange}
-                        >
-                          {[...Array(10).keys()].map((i) => (
-                            <option key={i + 1} value={i + 1}>
-                              {i + 1}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {Array.from({ length: numRoles }).map((_, index) => (
-                        <div className="form-group" key={`role-${index}`}>
-                          <label htmlFor={`roleName${index + 1}`}>
-                            Role #{index + 1} Name
-                          </label>
-                          <input
-                            id={`roleName${index + 1}`}
-                            type="text"
-                            placeholder={`e.g., Teacher`}
-                            value={roleNames[index] || ''}
-                            onChange={(e) =>
-                              handleRoleNameChange(index, e.target.value)
-                            }
-                            required
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <button type="submit" disabled={authLoading}>
-                  {authLoading
-                    ? 'Processing...'
-                    : authView === 'signIn'
-                    ? 'Sign In'
-                    : 'Sign Up'}
-                </button>
-                {authError && <div className="error-message">{authError}</div>}
-              </form>
-              <p className="auth-toggle">
-                {authView === 'signIn'
-                  ? "Don't have an account?"
-                  : 'Already have an account?'}
-                <button
-                  className="btn-link"
-                  onClick={() => {
-                    setAuthView(authView === 'signIn' ? 'signUp' : 'signIn');
-                    setAuthStep('form');
-                    setAuthError(null);
-                  }}
-                >
-                  {authView === 'signIn' ? 'Sign Up' : 'Sign In'}
-                </button>
-              </p>
-            </>
-          )}
-
-          {authStep === 'verify' && (
-            <>
-              <div className="card-header">
-                <h2>Check your email</h2>
-              </div>
-              <p className="auth-description">
-                We've sent a 6-digit verification code to{' '}
-                <strong>{email}</strong>. Please enter it below.
-              </p>
-              <form onSubmit={handleVerifyCode} className="auth-form">
-                <div className="form-group">
-                  <label htmlFor="verificationCode">Verification Code</label>
-                  <input
-                    id="verificationCode"
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="123456"
-                    required
-                    maxLength={6}
-                  />
-                </div>
-                <button type="submit" disabled={authLoading}>
-                  {authLoading ? 'Verifying...' : 'Verify & Sign In'}
-                </button>
-                {authError && <div className="error-message">{authError}</div>}
-              </form>
-              <p className="auth-toggle">
-                Entered the wrong email?
-                <button
-                  className="btn-link"
-                  onClick={() => {
-                    setAuthStep('form');
-                    setAuthError(null);
-                    setPassword(''); // Clear password for security
-                  }}
-                >
-                  Go Back
-                </button>
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    );
+  .results-card {
+    box-shadow: none;
+    border: none;
+    padding: 0;
   }
 
-  return (
-    <>
-      {payslipData && (
-        <PayslipModal
-          result={payslipData}
-          onClose={() => setPayslipData(null)}
-        />
-      )}
-      {showDeleteConfirm && (
-        <DeleteConfirmationModal
-          onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={handleDeleteAccount}
-          loading={isDeleting}
-          error={deleteError}
-        />
-      )}
-      {showSettingsModal && (
-        <SettingsModal
-          onClose={() => setShowSettingsModal(false)}
-          onProfileUpdate={handleProfileUpdated}
-          currentBusinessName={userBusinessName}
-          currentCompanies={userCompanies}
-          currentRoles={userRoles}
-        />
-      )}
+  .table-wrapper {
+    overflow: visible;
+  }
 
-      <div className="container">
-        <header className="screen-only">
-          <div className="header-content">
-            <div>
-              <h1>{userBusinessName}</h1>
-              <p>
-                Manage employees and calculate payroll with automated tax
-                calculations.
-              </p>
-            </div>
-            <div className="user-info">
-              <span className="user-email">
-                {session.user?.user_metadata?.username || session.user.email}
-              </span>
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="btn-secondary"
-              >
-                Settings
-              </button>
-              <button onClick={handleLogout} className="btn-secondary">
-                Logout
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="btn-danger"
-              >
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </header>
+  .report-footer {
+     page-break-before: auto;
+     margin-top: 2rem;
+     padding-top: 1rem;
+  }
 
-        <main className="management-grid screen-only">
-          <div className={`card ${isEditing ? 'is-editing' : ''}`}>
-            <div className="card-header">
-              <h2>
-                {isEditing
-                  ? `Editing: ${
-                      employees.find((e) => e.id === editingEmployeeId)?.name
-                    }`
-                  : 'Add New Employee'}
-              </h2>
-            </div>
-            <form onSubmit={handleFormSubmit} className="employee-form">
-              <div className="form-grid">
-                <div className="form-group span-4">
-                  <label htmlFor="employeeName">Employee Name</label>
-                  <input
-                    id="employeeName"
-                    type="text"
-                    value={employeeName}
-                    onChange={(e) => setEmployeeName(e.target.value)}
-                    placeholder="e.g., Jane Doe"
-                    required
-                    disabled={!isSupabaseConfigured}
-                  />
-                </div>
-                <div className="form-group span-2">
-                  <label htmlFor="employeeRole">Role</label>
-                  <select
-                    id="employeeRole"
-                    value={employeeRole}
-                    onChange={(e) => setEmployeeRole(e.target.value)}
-                    required
-                    disabled={!isSupabaseConfigured || userRoles.length === 0}
-                  >
-                    {userRoles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group span-2">
-                  <label htmlFor="employeeCompany">Company</label>
-                  <select
-                    id="employeeCompany"
-                    value={employeeCompany}
-                    onChange={(e) => setEmployeeCompany(e.target.value)}
-                    required
-                    disabled={
-                      !isSupabaseConfigured || userCompanies.length === 0
-                    }
-                  >
-                    {userCompanies.map((company) => (
-                      <option key={company} value={company}>
-                        {company}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="grossSalary">Gross Salary</label>
-                  <input
-                    id="grossSalary"
-                    type="number"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={employeeGrossSalary}
-                    onChange={(e) => setEmployeeGrossSalary(e.target.value)}
-                    required
-                    disabled={!isSupabaseConfigured}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="transport">Transport</label>
-                  <input
-                    id="transport"
-                    type="number"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={employeeTransport}
-                    onChange={(e) => setEmployeeTransport(e.target.value)}
-                    disabled={!isSupabaseConfigured}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="phone">Phone</label>
-                  <input
-                    id="phone"
-                    type="number"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={employeePhone}
-                    onChange={(e) => setEmployeePhone(e.target.value)}
-                    disabled={!isSupabaseConfigured}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="house">House Rent</label>
-                  <input
-                    id="house"
-                    type="number"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    value={employeeHouseRent}
-                    onChange={(e) => setEmployeeHouseRent(e.target.value)}
-                    disabled={!isSupabaseConfigured}
-                  />
-                </div>
-                <div className="form-group-checkbox span-4">
-                  <input
-                    id="pension"
-                    type="checkbox"
-                    checked={employeeHasPension}
-                    onChange={(e) => setEmployeeHasPension(e.target.checked)}
-                    disabled={!isSupabaseConfigured}
-                  />
-                  <label htmlFor="pension">Apply Pension Deductions</label>
-                </div>
-              </div>
-              <div className="form-actions">
-                <button type="submit" disabled={!isSupabaseConfigured}>
-                  {isEditing ? 'Update Employee' : 'Add Employee'}
-                </button>
-                {isEditing && (
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleCancelEdit}
-                    disabled={!isSupabaseConfigured}
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
+  /* --- PAYSLIP-SPECIFIC OVERRIDES (when modal is open) --- */
+  body:has(.modal-overlay) .screen-only,
+  body:has(.modal-overlay) .results-card {
+    display: none !important;
+  }
+  body:has(.modal-overlay) .modal-overlay {
+    position: static;
+    display: block;
+    background: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+  body:has(.modal-overlay) .modal-content {
+    box-shadow: none;
+    border-radius: 0;
+    max-height: none;
+    padding: 0;
+    border: none;
+    width: 100%;
+  }
+  body:has(.modal-overlay) #payslip-to-print {
+    overflow: visible;
+    font-size: 11pt;
+  }
+  body:has(.modal-overlay) .modal-footer {
+    display: none !important;
+  }
 
-          <div className="card">
-            <div className="card-header">
-              <h2>Employee Roster</h2>
-            </div>
+  /* --- COLOR & STYLE ADJUSTMENTS FOR PRINTING --- */
+  .payslip-net-pay,
+  .payslip-employee-info,
+  .print-table th,
+  .print-table tbody tr:nth-child(even),
+  .print-table .total-deduction,
+  .print-table .total-netpay {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
-            <div className="filters-container">
-              <div className="search-bar-container">
-                <SearchIcon />
-                <input
-                  type="text"
-                  placeholder="Search by name or role..."
-                  className="search-input"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="company-filter-container">
-                <label htmlFor="companyFilter">Company:</label>
-                <select
-                  id="companyFilter"
-                  value={selectedCompany}
-                  onChange={handleCompanyFilterChange}
-                >
-                  <option value="All Companies">All Companies</option>
-                  {userCompanies.map((company) => (
-                    <option key={company} value={company}>
-                      {company}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="employee-roster">
-              {loading && <p>Loading employees...</p>}
-              {!loading &&
-                filteredEmployees.length > 0 &&
-                filteredEmployees.map((emp) => (
-                  <div key={emp.id} className="roster-item">
-                    <div className="roster-item-header">
-                      <div className="roster-item-name-role">
-                        <span className="employee-name">{emp.name}</span>
-                        <div className="employee-badges">
-                          <span className="employee-role">{emp.role}</span>
-                          <span className="employee-company">
-                            {emp.company}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="roster-item-actions">
-                        <button
-                          onClick={() => handleStartEdit(emp)}
-                          className="btn-icon btn-secondary"
-                          aria-label="Edit Employee"
-                          disabled={!isSupabaseConfigured}
-                        >
-                          <EditIcon /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleRemoveEmployee(emp.id)}
-                          className="btn-icon remove-btn"
-                          aria-label="Remove Employee"
-                          disabled={!isSupabaseConfigured}
-                        >
-                          <RemoveIcon /> Remove
-                        </button>
-                      </div>
-                    </div>
-                    <div className="roster-item-details">
-                      <span>
-                        Gross:{' '}
-                        <strong>{formatCurrency(emp.grossSalary)}</strong>
-                      </span>
-                      <span>
-                        Transport:{' '}
-                        <strong>
-                          {formatCurrency(emp.transportAllowance)}
-                        </strong>
-                      </span>
-                      <span>
-                        Phone:{' '}
-                        <strong>
-                          {formatCurrency(emp.phoneAllowance)}
-                        </strong>
-                      </span>
-                      <span>
-                        House Rent:{' '}
-                        <strong>
-                          {formatCurrency(emp.houseRentAllowance)}
-                        </strong>
-                      </span>
-                      <span>
-                        Pension:{' '}
-                        <strong>
-                          {emp.hasPension ? 'Enabled' : 'Disabled'}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              {!loading && filteredEmployees.length === 0 && !error && (
-                <p className="no-results-message">
-                  No employees match your filter or search.
-                </p>
-              )}
-            </div>
-          </div>
-        </main>
-
-        <div className="calculate-section screen-only">
-          <div className="report-date-picker">
-            <div className="form-group">
-              <label htmlFor="reportMonth">Report Month</label>
-              <select
-                id="reportMonth"
-                value={reportMonth}
-                onChange={(e) => setReportMonth(e.target.value)}
-              >
-                {ETHIOPIAN_MONTHS.map((month) => (
-                  <option key={month} value={month}>
-                    {month}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="reportYear">Report Year (E.C.)</label>
-              <input
-                id="reportYear"
-                type="number"
-                placeholder="YYYY"
-                value={reportYear}
-                onChange={(e) => setReportYear(e.target.value)}
-              />
-            </div>
-          </div>
-          <button onClick={handleCalculatePayroll} className="calculate-btn">
-            {`Calculate Payroll for ${selectedCompany}`}
-          </button>
-        </div>
-
-        {error && <div className="error-message screen-only">{error}</div>}
-
-        {payrollResults.length > 0 && payrollReportScope && (
-          <div className="card results-card" id="results">
-            <div className="card-header screen-only">
-              <h2>{`Payroll Results for ${selectedCompany}`}</h2>
-              <div className="report-actions">
-                <button
-                  onClick={() => window.print()}
-                  className="btn-secondary btn-icon"
-                >
-                  <PrintIcon /> Print Report
-                </button>
-                <button
-                  onClick={handleExportToExcel}
-                  className="btn-secondary btn-icon"
-                >
-                  <ExportIcon /> Export to Excel
-                </button>
-              </div>
-            </div>
-            <PrintableReport
-              results={payrollResults}
-              scope={payrollReportScope}
-              reportDate={reportDateString}
-              businessName={userBusinessName}
-              onViewPayslip={handleViewPayslip}
-            />
-          </div>
-        )}
-      </div>
-    </>
-  );
+  .pension-deduction {
+    color: #000 !important; /* Reset red color for printing */
+  }
 }
-
-const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
-root.render(<App />);
